@@ -23,19 +23,22 @@ Please provide answers to these questions using markdown notation and place them
 
     - [ ] drexel's tux cluster
     - [ ] WSL on Windows
-    - [ ] Orbstack on MacOs
+    - [X] Orbstack on MacOs
     - [ ] VMWare Fusion
     - [ ] Somthing else (put name here)
 
 2. I have installed my virtual machine, tested it, feel comfortable using it, and validated that the required software is installed:
 
-    - [ ] YES
+    - [X] YES
     - [ ] N/A - I plan to use tux
     - [ ] NO - Not Yet
 
 
 3. Please provide a link to the repository you are using for this class.
+    - https://github.com/pnc37/cs503
 
-4. Briefly describe what you want to get out of this class.
+5. Briefly describe what you want to get out of this class.
+   - I want to be able to learn enough in this class to where I can change my career path to Cybersecurity and hopefully be able to get a entery level Cybersecurity related job.
 
-5. Briefly describe any concerns you might be having with being successful in this class (if any).
+7. Briefly describe any concerns you might be having with being successful in this class (if any).
+   - There are a few but the main one I am concerned about is understanding what it being asked to be done and what is needed for me to understand what I need to learn. 
