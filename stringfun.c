@@ -113,8 +113,6 @@ void  reverse_string(char *str){
     }      
 
     // Please implement
-
-    return str;
 }
 
 //----------------------
@@ -206,6 +204,7 @@ int main(int argc, char *argv[]){
     char *input_string;     //holds the string provided by the user on cmd line
     char *opt_string;       //holds the option string in argv[1]
     char opt;               //used to capture user option from cmd line
+    int wc; 
 
     //THIS BLOCK OF CODE HANDLES PROCESSING COMMAND LINE ARGS
     if (argc < 2){
@@ -240,7 +239,7 @@ int main(int argc, char *argv[]){
     //is the third arg or in arv[2]
     
     switch (opt){
-        case 'c':
+        case 'c': {
             wc = count_words(input_string);         //variable for the word count
 
             //TODO: #2. Call count_words, return of the result
@@ -248,7 +247,8 @@ int main(int argc, char *argv[]){
             
             printf("Word Count: %d\n", wc);
             break;
-        case 'r':
+        }
+        case 'r': {
             //TODO: #3. Call reverse string using input_string
             //          input string should be reversed
             reverse_string(input_string);
@@ -265,12 +265,14 @@ int main(int argc, char *argv[]){
         // and the original string gets changed as we swap the characters around.
         
             break;
-        case 'w':
+        }
+        case 'w': {
             printf("Word Print\n----------\n");
 
             //TODO: #5. Call word_print, output should be
             //          printed by that function
             break;
+        }
 
         //TODO: #6. What is the purpose of the default option here?
         //          Please describe replacing this TODO comment with
