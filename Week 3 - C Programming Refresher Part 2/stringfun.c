@@ -44,7 +44,7 @@ void usage(char *exename){
 
 }
 
-int count_words(char *buff, int len, int str_len){
+int count_words(char *buff, int str_len){
 int count = 0, in_word = 0;
     for (int i = 0; i < str_len && buff[i] != '.'; i++) {
         if (buff[i] != ' ' && !in_word) {
@@ -64,7 +64,7 @@ void reverse_string(char *buff, int str_len) {
     }
 }
 
-void print_words(char *buff, int len, int str_len) {
+void print_words(char *buff, int str_len) {
     int i = 0, word_start = -1, word_len = 0, word_index = 1;
 
     while (i < str_len && buff[i] != '.') {
