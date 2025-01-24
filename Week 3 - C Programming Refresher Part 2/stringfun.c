@@ -13,11 +13,22 @@ int  setup_buff(char *, char *, int);
 //prototypes for functions to handle required functionality
 int  count_words(char *, int, int);
 //add additional prototypes here
-
+void reverse_string(char *, int);
+void print_words(char *, int, int);
 
 int setup_buff(char *buff, char *user_str, int len){
     //TODO: #4:  Implement the setup buff as per the directions
-    return 0; //for now just so the code compiles. 
+    int i = 0;
+    while (i < len && user_str[i] != '\0')
+    {
+        buff[i] = user_str[i];
+        i++;
+    }
+    while (i < len) {
+        buff[i++] = '.';
+    }
+    
+    return i; //for now just so the code compiles. 
 }
 
 void print_buff(char *buff, int len){
@@ -34,11 +45,41 @@ void usage(char *exename){
 }
 
 int count_words(char *buff, int len, int str_len){
-    //YOU MUST IMPLEMENT
-    return 0;
+int count = 0, in_word = 0;
+    for (int i = 0; i < str_len && buff[i] != '.'; i++) {
+        if (buff[i] != ' ' && !in_word) {
+            in_word = 1;
+            count++;
+        } else if (buff[i] == ' ') {
+            in_word = 0;
+        }
+    }    
+    return count;
+}
+void reverse_string(char *buff, int str_len) {
+    for (int i = 0, j = str_len - 1; i < j; i++, j--) {
+        char temp = buff[i];
+        buff[i] = buff[j];
+        buff[j] = temp;
+    }
 }
 
-//ADD OTHER HELPER FUNCTIONS HERE FOR OTHER REQUIRED PROGRAM OPTIONS
+void print_words(char *buff, int len, int str_len) {
+    int i = 0, word_start = -1, word_len = 0, word_index = 1;
+
+    while (i < str_len && buff[i] != '.') {
+        if (buff[i] != ' ' && word_start == -1) {
+            word_start = i;
+        }
+        if ((buff[i] == ' ' || i == str_len - 1) && word_start != -1) {
+            word_len = (buff[i] == ' ') ? i - word_start : i - word_start + 1;
+            printf("Word %d: %.*s (length: %d)\n", word_index++, word_len, buff + word_start, word_len);
+            word_start = -1;
+        }
+        i++;
+    }
+}
+
 
 int main(int argc, char *argv[]){
 
@@ -77,8 +118,11 @@ int main(int argc, char *argv[]){
     //TODO:  #3 Allocate space for the buffer using malloc and
     //          handle error if malloc fails by exiting with a 
     //          return code of 99
-    // CODE GOES HERE FOR #3
-
+  buff = (char *)malloc(BUFFER_SZ * sizeof(char));
+    if (!buff) {
+        printf("Error: Memory allocation failed\n");
+        exit(99);
+    }
 
     user_str_len = setup_buff(buff, input_string, BUFFER_SZ);     //see todos
     if (user_str_len < 0){
@@ -98,13 +142,25 @@ int main(int argc, char *argv[]){
 
         //TODO:  #5 Implement the other cases for 'r' and 'w' by extending
         //       the case statement options
+         case 'r':
+            reverse_string(buff, user_str_len);
+            printf("Reversed String: ");
+            print_buff(buff, BUFFER_SZ);
+            break;
+
+        case 'w':
+            print_words(buff, BUFFER_SZ, user_str_len);
+            break;
+
         default:
             usage(argv[0]);
+            free(buff);
             exit(1);
     }
 
     //TODO:  #6 Dont forget to free your buffer before exiting
     print_buff(buff,BUFFER_SZ);
+    free(buff);
     exit(0);
 }
 
@@ -114,4 +170,10 @@ int main(int argc, char *argv[]){
 //          is a good practice, after all we know from main() that 
 //          the buff variable will have exactly 50 bytes?
 //  
-//          PLACE YOUR ANSWER HERE
+//          providing both the pointer and the length is good practice beacause
+//          it helps the flexibitly of the code and the buffer is at a fixed size
+//          in the program passing the length makes the functions more reusable 
+//          for buffers of different sizes.It also reduces the amount of errors
+//          the buffer overflows byt makeing sure the function does not pass a 
+//          curtain lenth it is also very clear to read the buffer being at at
+//          length that it is and very easy to change the code by it being that way
