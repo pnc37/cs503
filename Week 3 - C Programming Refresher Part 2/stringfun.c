@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 
+
 #define BUFFER_SZ 50
 
 //prototypes
@@ -44,7 +45,8 @@ void usage(char *exename){
 
 }
 
-int count_words(char *buff, int str_len){
+int count_words(char *buff, int len, int str_len){
+    (void)len;
 int count = 0, in_word = 0;
     for (int i = 0; i < str_len && buff[i] != '.'; i++) {
         if (buff[i] != ' ' && !in_word) {
@@ -56,6 +58,7 @@ int count = 0, in_word = 0;
     }    
     return count;
 }
+
 void reverse_string(char *buff, int str_len) {
     for (int i = 0, j = str_len - 1; i < j; i++, j--) {
         char temp = buff[i];
@@ -64,9 +67,10 @@ void reverse_string(char *buff, int str_len) {
     }
 }
 
-void print_words(char *buff, int str_len) {
-    int i = 0, word_start = -1, word_len = 0, word_index = 1;
+void print_words(char * buff, int len, int str_len) {
 
+    int i = 0, word_start = -1, word_len = 0, word_index = 1;
+        (void)len;      
     while (i < str_len && buff[i] != '.') {
         if (buff[i] != ' ' && word_start == -1) {
             word_start = i;
@@ -79,7 +83,6 @@ void print_words(char *buff, int str_len) {
         i++;
     }
 }
-
 
 int main(int argc, char *argv[]){
 
