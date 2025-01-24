@@ -168,7 +168,7 @@ int main(int argc, char *argv[]){
 //          starter take both the buffer as well as the length.  Why
 //          do you think providing both the pointer and the length
 //          is a good practice, after all we know from main() that 
-//          the buff variable will have exactly 50 bytes?
+//          the buff variable will have exactly 50 bytes? 
 //  
 //          providing both the pointer and the length is good practice beacause
 //          it helps the flexibitly of the code and the buffer is at a fixed size
