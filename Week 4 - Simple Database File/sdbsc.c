@@ -10,17 +10,20 @@
 #include "db.h"
 #include "sdbsc.h"
 
-/*
- *  open_db
- *      dbFile:  name of the database file
- *      should_truncate:  indicates if opening the file also empties it
- *
- *  returns:  File descriptor on success, or ERR_DB_FILE on failure
- *
- *  console:  Does not produce any console I/O on success
- *            M_ERR_DB_OPEN on error
- *
- */
+int open_db(const char *dbFile, int should_truncate) {
+    int flags = O_RDWR | O_CREAT;  // Read/write mode, create if missing
+    if (should_truncate) {
+        flags |= O_TRUNC;  // Clear file if needed
+    }
+
+    int fd = open(dbFile, flags, 0666);  // Open file with read/write permissions
+    if (fd == -1) {
+        printf(M_ERR_DB_OPEN);  // Print error message
+        return ERR_DB_FILE;     // Return error code
+    }
+
+    return fd;  // Return valid file descriptor
+}
 int open_db(char *dbFile, bool should_truncate)
 {
     // Set permissions: rw-rw----
@@ -47,50 +50,92 @@ int open_db(char *dbFile, bool should_truncate)
     return fd;
 }
 
-/*
- *  get_student
- *      fd:  linux file descriptor
- *      id:  the student id we are looking forname of the
- *      *s:  a pointer where the located (if found) student data will be
- *           copied
- *
- *  returns:  NO_ERROR       student located and copied into *s
- *            ERR_DB_FILE    database file I/O issue
- *            SRCH_NOT_FOUND student was not located in the database
- *
- *  console:  Does not produce any console I/O used by other functions
- */
+int get_student(int fd, int id, student_t *s) {
+    // Validate student ID range
+    if (id < 1 || id > 100000) {
+        return SRCH_NOT_FOUND;
+    }
+
+    // Calculate byte offset
+    int offset = id * STUDENT_RECORD_SIZE;
+
+    // Seek to the correct position in the file
+    if (lseek(fd, offset, SEEK_SET) == -1) {
+        return ERR_DB_FILE;
+    }
+
+    // Read the student record
+    ssize_t bytes_read = read(fd, s, sizeof(student_t));
+    if (bytes_read != sizeof(student_t)) {
+        return ERR_DB_FILE;  // Read error
+    }
+
+    // Check if the record is empty (id field == 0)
+    if (s->id == 0) {
+        return SRCH_NOT_FOUND;
+    }
+
+    return NO_ERROR;  // Student found successfully
+}
 int get_student(int fd, int id, student_t *s)
 {
     // TODO
     return NOT_IMPLEMENTED_YET;
 }
 
-/*
- *  add_student
- *      fd:     linux file descriptor
- *      id:     student id (range is defined in db.h )
- *      fname:  student first name
- *      lname:  student last name
- *      gpa:    GPA as an integer (range defined in db.h)
- *
- *  Adds a new student to the database.  After calculating the index for the
- *  student, check if there is another student already at that location.  A good
- *  way is to use something like memcmp() to ensure that the location for this
- *  student contains all zero byes indicating the space is empty.
- *
- *  returns:  NO_ERROR       student added to database
- *            ERR_DB_FILE    database file I/O issue
- *            ERR_DB_OP      database operation logically failed (aka student
- *                           already exists)
- *
- *
- *  console:  M_STD_ADDED       on success
- *            M_ERR_DB_ADD_DUP  student already exists
- *            M_ERR_DB_READ     error reading or seeking the database file
- *            M_ERR_DB_WRITE    error writing to db file (adding student)
- *
- */
+/int add_student(int fd, int id, const char *fname, const char *lname, int gpa) {
+    // Validate student ID and GPA range
+    if (id < 1 || id > 100000 || gpa < 0 || gpa > 400) {
+        return ERR_DB_OP;
+    }
+
+    // Calculate the byte offset
+    int offset = id * STUDENT_RECORD_SIZE;
+    
+    // Seek to the correct position
+    if (lseek(fd, offset, SEEK_SET) == -1) {
+        printf(M_ERR_DB_READ);
+        return ERR_DB_FILE;
+    }
+
+    // Check if student already exists
+    student_t existing_student;
+    memset(&existing_student, 0, sizeof(student_t));  // Initialize with zeros
+    if (read(fd, &existing_student, sizeof(student_t)) != sizeof(student_t)) {
+        printf(M_ERR_DB_READ);
+        return ERR_DB_FILE;
+    }
+
+    // If the record is not empty, student already exists
+    if (existing_student.id != 0) {
+        printf(M_ERR_DB_ADD_DUP);
+        return ERR_DB_OP;
+    }
+
+    // Prepare new student record
+    student_t new_student;
+    memset(&new_student, 0, sizeof(student_t));  // Initialize to zero
+    new_student.id = id;
+    strncpy(new_student.fname, fname, sizeof(new_student.fname) - 1);
+    strncpy(new_student.lname, lname, sizeof(new_student.lname) - 1);
+    new_student.gpa = gpa;
+
+    // Seek back to the correct position to write
+    if (lseek(fd, offset, SEEK_SET) == -1) {
+        printf(M_ERR_DB_WRITE);
+        return ERR_DB_FILE;
+    }
+
+    // Write the new student record
+    if (write(fd, &new_student, sizeof(student_t)) != sizeof(student_t)) {
+        printf(M_ERR_DB_WRITE);
+        return ERR_DB_FILE;
+    }
+
+    // Success
+    printf(M_STD_ADDED);
+    return NO_ERROR;
+}
 int add_student(int fd, int id, char *fname, char *lname, int gpa)
 {
     // TODO
@@ -98,28 +143,39 @@ int add_student(int fd, int id, char *fname, char *lname, int gpa)
     return NOT_IMPLEMENTED_YET;
 }
 
-/*
- *  del_student
- *      fd:     linux file descriptor
- *      id:     student id to be deleted
- *
- *  Removes a student to the database.  Use the get_student() function to
- *  locate the student to be deleted. If there is a student at that location
- *  write an empty student record - see EMPTY_STUDENT_RECORD from db.h at
- *  that location.
- *
- *  returns:  NO_ERROR       student deleted from database
- *            ERR_DB_FILE    database file I/O issue
- *            ERR_DB_OP      database operation logically failed (aka student
- *                           not in database)
- *
- *
- *  console:  M_STD_DEL_MSG      on success
- *            M_STD_NOT_FND_MSG  student not in database, cant be deleted
- *            M_ERR_DB_READ      error reading or seeking the database file
- *            M_ERR_DB_WRITE     error writing to db file (adding student)
- *
- */
+int del_student(int fd, int id) {
+    student_t student;
+
+    // Check if student exists
+    int result = get_student(fd, id, &student);
+    if (result == SRCH_NOT_FOUND) {
+        printf(M_STD_NOT_FND_MSG);
+        return ERR_DB_OP;  // Student not found
+    }
+    if (result == ERR_DB_FILE) {
+        printf(M_ERR_DB_READ);
+        return ERR_DB_FILE;  // File error
+    }
+
+    // Calculate byte offset
+    int offset = id * STUDENT_RECORD_SIZE;
+
+    // Seek to the correct position
+    if (lseek(fd, offset, SEEK_SET) == -1) {
+        printf(M_ERR_DB_WRITE);
+        return ERR_DB_FILE;
+    }
+
+    // Write EMPTY_STUDENT_RECORD to delete the student
+    if (write(fd, &EMPTY_STUDENT_RECORD, sizeof(student_t)) != sizeof(student_t)) {
+        printf(M_ERR_DB_WRITE);
+        return ERR_DB_FILE;
+    }
+
+    // Success
+    printf(M_STD_DEL_MSG);
+    return NO_ERROR;
+}
 int del_student(int fd, int id)
 {
     // TODO
@@ -127,30 +183,39 @@ int del_student(int fd, int id)
     return NOT_IMPLEMENTED_YET;
 }
 
-/*
- *  count_db_records
- *      fd:     linux file descriptor
- *
- *  Counts the number of records in the database.  Start by reading the
- *  database at the beginning, and continue reading individual records
- *  until you it EOF.  EOF is when the read() syscall returns 0. Check
- *  if a slot is empty or previously deleted by investigating if all of
- *  the bytes in the record read are zeros - I would suggest using memory
- *  compare memcmp() for this. Create a counter variable and initialize it
- *  to zero, every time a non-zero record is read increment the counter.
- *
- *  returns:  <number>       returns the number of records in db on success
- *            ERR_DB_FILE    database file I/O issue
- *            ERR_DB_OP      database operation logically failed (aka student
- *                           not in database)
- *
- *
- *  console:  M_DB_RECORD_CNT  on success, to report the number of students in db
- *            M_DB_EMPTY       on success if the record count in db is zero
- *            M_ERR_DB_READ    error reading or seeking the database file
- *            M_ERR_DB_WRITE   error writing to db file (adding student)
- *
- */
+int count_db_records(int fd) {
+    student_t student;
+    int count = 0;
+
+    // Move to the beginning of the file
+    if (lseek(fd, 0, SEEK_SET) == -1) {
+        printf(M_ERR_DB_READ);
+        return ERR_DB_FILE;
+    }
+
+    // Read each record and check if it is empty
+    while (read(fd, &student, sizeof(student_t)) == sizeof(student_t)) {
+        if (memcmp(&student, &EMPTY_STUDENT_RECORD, sizeof(student_t)) != 0) {
+            count++;  // Record is not empty, count it
+        }
+    }
+
+    // Handle read error
+    if (read(fd, &student, sizeof(student_t)) == -1) {
+        printf(M_ERR_DB_READ);
+        return ERR_DB_FILE;
+    }
+
+    // Print result
+    if (count == 0) {
+        printf(M_DB_EMPTY);
+    } else {
+        printf(M_DB_RECORD_CNT, count);
+    }
+
+    return count;
+}
+
 int count_db_records(int fd)
 {
     // TODO
@@ -158,39 +223,50 @@ int count_db_records(int fd)
     return NOT_IMPLEMENTED_YET;
 }
 
-/*
- *  print_db
- *      fd:     linux file descriptor
- *
- *  Prints all records in the database.  Start by reading the
- *  database at the beginning, and continue reading individual records
- *  until you it EOF.  EOF is when the read() syscall returns 0. Check
- *  if a slot is empty or previously deleted by investigating if all of
- *  the bytes in the record read are zeros - I would suggest using memory
- *  compare memcmp() for this. Be careful as the database might be empty.
- *  on the first real row encountered print the header for the required output:
- *
- *     printf(STUDENT_PRINT_HDR_STRING, "ID",
- *                  "FIRST_NAME", "LAST_NAME", "GPA");
- *
- *  then for each valid record encountered print the required output:
- *
- *     printf(STUDENT_PRINT_FMT_STRING, student.id, student.fname,
- *                    student.lname, calculated_gpa_from_student);
- *
- *  The code above assumes you are reading student records into a local
- *  variable named student that is of type student_t. Also dont forget that
- *  the GPA in the student structure is an int, to convert it into a real
- *  gpa divide by 100.0 and store in a float variable.
- *
- *  returns:  NO_ERROR       on success
- *            ERR_DB_FILE    database file I/O issue
- *
- *
- *  console:  <see above>      on success, print table or database empty
- *            M_ERR_DB_READ    error reading or seeking the database file
- *
- */
+int print_db(int fd) {
+    student_t student;
+    int records_found = 0;
+
+    // Move to the beginning of the file
+    if (lseek(fd, 0, SEEK_SET) == -1) {
+        printf(M_ERR_DB_READ);
+        return ERR_DB_FILE;
+    }
+
+    // Read and print records
+    while (read(fd, &student, sizeof(student_t)) == sizeof(student_t)) {
+        // Skip empty records
+        if (memcmp(&student, &EMPTY_STUDENT_RECORD, sizeof(student_t)) == 0) {
+            continue;
+        }
+
+        // Print table header only once (before first record)
+        if (records_found == 0) {
+            printf(STUDENT_PRINT_HDR_STRING, "ID", "FIRST_NAME", "LAST_NAME", "GPA");
+        }
+
+        // Convert GPA from int to float
+        float gpa = student.gpa / 100.0;
+
+        // Print student record
+        printf(STUDENT_PRINT_FMT_STRING, student.id, student.fname, student.lname, gpa);
+        records_found++;
+    }
+
+    // Handle read error
+    if (read(fd, &student, sizeof(student_t)) == -1) {
+        printf(M_ERR_DB_READ);
+        return ERR_DB_FILE;
+    }
+
+    // If no records were printed, print database empty message
+    if (records_found == 0) {
+        printf(M_DB_EMPTY);
+    }
+
+    return NO_ERROR;
+}
+
 int print_db(int fd)
 {
     // TODO
@@ -198,34 +274,21 @@ int print_db(int fd)
     return NOT_IMPLEMENTED_YET;
 }
 
-/*
- *  print_student
- *      *s:   a pointer to a student_t structure that should
- *            contain a valid student to be printed
- *
- *  Start by ensuring that provided student pointer is valid.  To do this
- *  make sure it is not NULL and that s->id is not zero.  After ensuring
- *  that the student is valid, print it the exact way that is described
- *  in the print_db() function by first printing the header then the
- *  student data:
- *
- *     printf(STUDENT_PRINT_HDR_STRING, "ID",
- *                  "FIRST NAME", "LAST_NAME", "GPA");
- *
- *     printf(STUDENT_PRINT_FMT_STRING, s->id, s->fname,
- *                    student.lname, calculated_gpa_from_s);
- *
- *  Dont forget that  the GPA in the student structure is an int, to convert
- *  it into a real gpa divide by 100.0 and store in a float variable.
- *
- *  returns:  nothing, this is a void function
- *
- *
- *  console:  <see above>      on success, print table or database empty
- *            M_ERR_STD_PRINT  if the function argument s is NULL or if
- *                             s->id is zero
- *
- */
+    // Validate student pointer
+    if (s == NULL || s->id == 0) {
+        printf(M_ERR_STD_PRINT);
+        return;
+    }
+
+    // Convert GPA from int to float
+    float gpa = s->gpa / 100.0;
+
+    // Print table header
+    printf(STUDENT_PRINT_HDR_STRING, "ID", "FIRST NAME", "LAST NAME", "GPA");
+
+    // Print student record
+    printf(STUDENT_PRINT_FMT_STRING, s->id, s->fname, s->lname, gpa);
+
 void print_student(student_t *s)
 {
     // TODO
@@ -233,7 +296,7 @@ void print_student(student_t *s)
 }
 
 /*
- *  NOTE IMPLEMENTING THIS FUNCTION IS EXTRA CREDIT
+ *  NOTE IMPLEMENTING THIS FUNCTION IS EXTRA CREDIT - student.db file
  *
  *  compress_db
  *      fd:     linux file descriptor
