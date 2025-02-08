@@ -34,6 +34,21 @@
  */
 int build_cmd_list(char *cmd_line, command_list_t *clist)
 {
-    printf(M_NOT_IMPL);
-    return EXIT_NOT_IMPL;
+    // Initialize the command list structure
+    clist->num_commands = 0;
+    
+    // Tokenize the command line to extract individual commands and arguments
+    char *cmd_token = strtok(cmd_line, "|");  // Split by pipe symbol
+    while (cmd_token != NULL)
+    {
+        clist->num_commands++;  // Increase command count
+        
+        // Store the command and its arguments
+        command_t cmd;
+        parse_command(cmd_token, &cmd);  // Parse the command into a command structure
+        clist->commands[clist->num_commands - 1] = cmd;
+        
+        cmd_token = strtok(NULL, "|");  // Continue to the next command
+    }
+    return 0;  // Return success
 }
