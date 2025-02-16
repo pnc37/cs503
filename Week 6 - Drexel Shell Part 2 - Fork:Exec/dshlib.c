@@ -2,9 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdbool.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <sys/wait.h>
 #include "dshlib.h"
 
@@ -51,21 +49,72 @@
  *  Standard Library Functions You Might Want To Consider Using (assignment 2+)
  *      fork(), execvp(), exit(), chdir()
  */
-int exec_local_cmd_loop()
-{
-    char *cmd_buff;
-    int rc = 0;
-    cmd_buff_t cmd;
 
-    // TODO IMPLEMENT MAIN LOOP
+int exec_local_cmd_loop() {
+    char cmd_buff[SH_CMD_MAX];  // User input buffer
+    cmd_buff_t cmd;             // Command structure
+    int rc = OK;                // Return code for handling errors
 
-    // TODO IMPLEMENT parsing input to cmd_buff_t *cmd_buff
+    while (1) {
+        printf("%s", SH_PROMPT);  // Prompt for user input
+        fflush(stdout);
 
-    // TODO IMPLEMENT if built-in command, execute builtin logic for exit, cd (extra credit: dragon)
-    // the cd command should chdir to the provided directory; if no directory is provided, do nothing
+        // Read user input and handle errors
+        if (fgets(cmd_buff, SH_CMD_MAX, stdin) == NULL) {
+            printf("\n");
+            break;  // Exit if fgets fails (EOF or error)
+        }
 
-    // TODO IMPLEMENT if not built-in command, fork/exec as an external command
-    // for example, if the user input is "ls -l", you would fork/exec the command "ls" with the arg "-l"
+        // Remove the trailing newline character from the input
+        cmd_buff[strcspn(cmd_buff, "\n")] = '\0';
 
-    return OK;
+        // Parse the input into cmd_buff_t structure
+        if (build_cmd_buff(cmd_buff, &cmd) != OK) {
+            printf(CMD_WARN_NO_CMD);
+            continue;  // Skip iteration if no command was parsed
+        }
+
+        // Handle built-in commands like exit and cd
+        Built_In_Cmds cmd_type = match_command(cmd.argv[0]);
+        switch (cmd_type) {
+            case BI_CMD_EXIT:
+                printf("Exiting shell...\n");
+                return OK_EXIT;  // Exit the shell
+            case BI_CMD_CD:
+                rc = exec_built_in_cmd(&cmd);  // Handle cd command
+                if (rc != OK) {
+                    printf(CMD_ERR_EXECUTE);  // Error while executing cd
+                }
+                continue;  // Skip the rest of the loop to read the next command
+            case BI_CMD_RC:
+                printf("%d\n", rc);  // Return code for the last operation
+                continue;
+            case BI_NOT_BI:
+                break;  // Proceed with external command if it's not built-in
+            default:
+                printf("Unknown built-in command\n");
+                continue;
+        }
+
+        // Handle external commands using fork/exec
+        pid_t pid = fork();
+        if (pid == -1) {
+            perror("fork");
+            rc = ERR_MEMORY;
+            continue;  // Skip iteration if fork fails
+        } else if (pid == 0) {
+            // In child process
+            if (execvp(cmd.argv[0], cmd.argv) == -1) {
+                perror(CMD_ERR_EXECUTE);  // Execute the command, print error if it fails
+                exit(1);
+            }
+        } else {
+            // In parent process
+            int status;
+            waitpid(pid, &status, 0);  // Wait for the child process to finish
+            rc = WEXITSTATUS(status);  // Get the exit status of the child process
+        }
+    }
+
+    return OK;  // Return 0 if loop exits normally
 }

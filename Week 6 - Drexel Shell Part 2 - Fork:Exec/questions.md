@@ -1,41 +1,42 @@
 1. Can you think of why we use `fork/execvp` instead of just calling `execvp` directly? What value do you think the `fork` provides?
 
-    > **Answer**:  _start here_
+    > **Answer**:  The reason we use fork() and execvp() together instead of just calling execvp() directly is because fork() creates a new process. Without fork(), if we called execvp() right away, the current process (which is the shell) would be replaced by the program we're trying to run. This would cause the shell to stop running and wouldn't allow it to accept any more commands. By using fork(), we create a child process, and in that child process, execvp() replaces its memory with the program we want to run. The shell (the parent process) can then keep running and continue accepting commands. This setup also lets the parent process manage and wait for the child process to finish, which is important for tracking the child’s exit status. Essentially, fork() makes sure the shell stays active while the child process takes care of running external commands.
 
 2. What happens if the fork() system call fails? How does your implementation handle this scenario?
 
-    > **Answer**:  _start here_
+    > **Answer**:  If the fork() system call fails, it means that the operating system was unable to create a new child process, usually due to resource constraints such as running out of system memory or hitting the maximum number of allowed processes. When fork() fails, it returns a negative value, and the child process is not created. In our implementation, if fork() fails, the return value of fork() is checked. If the return value is less than 0, we print an error message using perror(), which provides details about the failure, and then we handle the situation by continuing to the next iteration of the command loop without attempting to execute the command.
 
 3. How does execvp() find the command to execute? What system environment variable plays a role in this process?
 
-    > **Answer**:  _start here_
+    > **Answer**:  The execvp() function finds the command to execute by searching through the directories listed in the PATH environment variable. When you pass a command to execvp(), it first checks if the command is an absolute path (e.g., /bin/ls). If it’s not, it searches for the command in each directory specified in the PATH variable. The PATH environment variable contains a colon-separated list of directories. When execvp() is called, it iterates through each directory in the PATH, trying to find the executable file that matches the command. If it finds the file in one of the directories, it loads and executes it. If it doesn’t find the command in any of the directories listed in PATH, it returns an error.
 
 4. What is the purpose of calling wait() in the parent process after forking? What would happen if we didn’t call it?
 
-    > **Answer**:  _start here_
+    > **Answer**:  The purpose of calling wait() in the parent process after forking is to ensure that the parent waits for the child process to complete before continuing. Process Synchronization - By calling wait(), the parent process waits for the child to finish executing. Without this synchronization, the parent might proceed to the next task or prompt the user for input before the child process has finished its work. This could lead to issues like prematurely reading input or other unexpected behavior. Releasing Resources - When a child process terminates, it doesn't immediately release all its resources (such as process ID). Instead, it enters a "zombie" state until the parent acknowledges that it has finished. By calling wait(), the parent process retrieves the child’s exit status and allows the operating system to clean up the resources associated with the terminated child process. If wait() is not called, these resources will not be freed, and it could lead to resource leaks, especially if many child processes are created.
 
 5. In the referenced demo code we used WEXITSTATUS(). What information does this provide, and why is it important?
 
-    > **Answer**:  _start here_
+    > **Answer**:  The WEXITSTATUS() macro is used to extract the exit status of a child process after it has finished executing. It takes the status code returned by wait() or waitpid() (which includes information about the child process's termination) and extracts the actual exit code that the child process used when it terminated.the status returned by wait() or waitpid() contains more than just the exit code. It also contains information about how the process terminated (e.g., whether it exited normally or was terminated by a signal). The WEXITSTATUS() macro specifically extracts the exit status (the return code) from this information.Error Handling: By using WEXITSTATUS(), the parent process can check the exit status of the child process and determine if it was successful or encountered an error. This is crucial for proper error handling and logging.
 
 6. Describe how your implementation of build_cmd_buff() handles quoted arguments. Why is this necessary?
 
-    > **Answer**:  _start here_
+    > **Answer**:  The build_cmd_buff() function is responsible for parsing the command input provided by the user and breaking it down into individual arguments. One of its key responsibilities is handling quoted arguments correctly, as they can contain spaces, which would otherwise be treated as separate arguments. In most shell commands, quoted arguments allow users to group words with spaces into a single argument. For example, "Hello World" should be treated as one argument, not two ("Hello" and "World"). Handling this correctly is important to ensure that the command is parsed as the user intended.Correct Command Parsing: Without handling quoted arguments, input like echo "Hello World" would be split into two separate arguments: "echo" and "Hello World", which is not the desired behavior. By grouping words in quotes as a single argument, the shell can execute the command correctly.
 
 7. What changes did you make to your parsing logic compared to the previous assignment? Were there any unexpected challenges in refactoring your old code?
 
-    > **Answer**:  _start here_
+    > **Answer**:  In refactoring the parsing logic for the new assignment, several key changes were made to accommodate the new requirements, particularly the handling of quoted arguments and the transition from using a command list structure to a single cmd_buff_t structure. Another significant change was improving whitespace handling. In the previous assignment, the code simply split commands by spaces, but that approach didn’t handle multiple spaces or spaces inside quoted arguments properly. In this assignment, I added logic to trim leading and trailing spaces and collapse consecutive spaces into a single delimiter, except when they appeared inside quotes.
+
 
 8. For this quesiton, you need to do some research on Linux signals. You can use [this google search](https://www.google.com/search?q=Linux+signals+overview+site%3Aman7.org+OR+site%3Alinux.die.net+OR+site%3Atldp.org&oq=Linux+signals+overview+site%3Aman7.org+OR+site%3Alinux.die.net+OR+site%3Atldp.org&gs_lcrp=EgZjaHJvbWUyBggAEEUYOdIBBzc2MGowajeoAgCwAgA&sourceid=chrome&ie=UTF-8) to get started.
 
 - What is the purpose of signals in a Linux system, and how do they differ from other forms of interprocess communication (IPC)?
 
-    > **Answer**:  _start here_
+    > **Answer**:  In a Linux system, signals are a form of communication used to notify processes of certain events or conditions. A signal is a notification sent to a process that tells it to perform a specific action or respond to a particular situation, such as stopping execution, continuing after being paused, or handling a fatal error. Signals are often used to manage and control processes, for example, to terminate, pause, or alter the behavior of a process. Signals differ from other forms of interprocess communication (IPC) because they are generally unidirectional and asynchronous. Here's how they differ from more common IPC methods like pipes, message queues, or shared memory. Signals are simpler to implement compared to other IPC methods. They don't require a communication channel, such as a pipe or a socket, and are sent directly to the process by the operating system. Other IPC mechanisms typically require processes to explicitly set up communication channels and manage data transfer.
 
 - Find and describe three commonly used signals (e.g., SIGKILL, SIGTERM, SIGINT). What are their typical use cases?
 
-    > **Answer**:  _start here_
+    > **Answer**:  One commonly used signal is SIGKILL (Signal 9), which is used to forcefully terminate a process. Unlike other signals, SIGKILL cannot be caught, blocked, or ignored by the process. This makes it useful when a process is unresponsive and cannot be terminated through normal means. However, it’s important to note that SIGKILL does not allow the process to perform any cleanup, such as closing files or releasing resources.Another frequently used signal is SIGTERM (Signal 15), which is the default signal sent by the kill command. Unlike SIGKILL, SIGTERM can be caught and handled by the process, giving it a chance to gracefully terminate and clean up resources before exiting. This signal is commonly used when administrators or users want to stop a process but ensure that it has the opportunity to finish any necessary tasks, such as closing open files or saving data.
 
 - What happens when a process receives SIGSTOP? Can it be caught or ignored like SIGINT? Why or why not?
 
-    > **Answer**:  _start here_
+    > **Answer**:  When a process receives SIGSTOP, it is immediately paused or "stopped." This signal is used to suspend a process without terminating it, allowing it to be resumed later. Unlike SIGINT or SIGTERM, SIGSTOP cannot be caught, ignored, or handled by the process. It is a stopping signal that is enforced by the operating system, and its primary purpose is to control the process's execution. The reason SIGSTOP cannot be caught or ignored is that it is a kernel-generated signal designed to be a fundamental control mechanism for managing processes. Allowing a process to catch or ignore SIGSTOP would undermine the operating system’s ability to control processes, potentially making process suspension unreliable or inconsistent. For example, if a process could ignore SIGSTOP, it could continue running even if the operating system tried to pause it, leading to unpredictable behavior.
