@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "name": "(gdb) studentdb",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/week4/sdbsc",
+            "args": ["-a", "1", "john", "doe", "345"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/week4",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build week4"
+        }
+    ]
+}

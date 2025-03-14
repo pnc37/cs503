@@ -1,0 +1,20 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Build week4",
+        "type": "shell",
+        "command": "make",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "options": {
+          "cwd": "${workspaceFolder}/week4"
+      },
+        "problemMatcher": ["$gcc"],
+        "detail": "Runs the 'make' command to build the project."
+      }
+    ]
+  }
+  
